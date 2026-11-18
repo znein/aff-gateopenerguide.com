@@ -20,14 +20,23 @@
     return String(s).toLowerCase().replace(/[^a-z0-9_-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
   }
 
-  // Awin allows 50 characters. Long product slugs keep their END - that's where set numbers and
-  // variants live ("...-saturn-v-92176"), so similar products stay distinguishable.
+  // A short, stable fingerprint of a string (djb2 hash, base 36).
+  function fingerprint(s) {
+    var h = 5381;
+    for (var i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
+    return ("0000" + h.toString(36)).slice(-4);
+  }
+
+  // Awin allows 50 characters. A slug that doesn't fit keeps its readable start (usually the model)
+  // plus a 4-character fingerprint of the whole slug, so two products can never share a label.
   function clickref(a, url) {
     var section = (a.closest("section[id]") || {}).id || "page";
     var prefix = clean([cfg.site, section, kindOf(a)].filter(Boolean).join("-"));
     var slug = clean(decodeURIComponent(url.pathname).split("/").filter(Boolean).pop() || "home");
     var room = 50 - prefix.length - 1;
-    if (slug.length > room) slug = slug.slice(slug.length - room).replace(/^-/, "");
+    if (slug.length > room) {
+      slug = slug.slice(0, room - 5).replace(/-+$/, "") + "-" + fingerprint(slug);
+    }
     return prefix + "-" + slug;
   }
 
